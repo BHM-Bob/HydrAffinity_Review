@@ -1,0 +1,32 @@
+comment: s1_EHIGN_l4h128attn2
+name: s1_EHIGN_l4h128attn2ns0de0dn0
+train:
+  data:
+    batch_size: 256
+    data_root: ./data
+    device: cpu
+    model: EHIGN
+    bin_root: path-to-your-data-folder
+    lig_type: PepDoRA
+  debug: false
+  model:
+    arch: arch1
+    pred: MLP
+    drop_out: 0.1
+    hidden_feat_size: 384
+    layer_num: 2
+    noise_rate: 0.05
+    use_attn: false
+    n_head: 8
+  training:
+    device: cuda
+    early_stop_epoch: 200
+    epochs: 5000
+    init_model_parameters: true
+    least_epochs: 300
+    now_random_seed: 0
+    random_seed:
+    - 0
+    - 3407
+    - 777
+    save_dir: ./checkpoints

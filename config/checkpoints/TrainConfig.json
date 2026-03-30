@@ -1,0 +1,25 @@
+{
+    "train":
+    {
+        "model": "EHIGN", 
+        "data_root" : "./data",
+        "pdb_root" : "./data/PDBbind_2019/pdb",
+        "test2013_dir" : "./data/PDBbind_2013/pdb",
+        "test2016_dir" : "./data/PDBbind_2016/pdb",
+        "test2019_dir" : "./data/PDBbind_2019/pdb",
+        "load2mem" : "cuda",
+        "save_dir" : "./checkpoints",
+        "graph_type" : "Graph_EHIGN",
+        "random_seed" : [
+            0, 3407, 777
+        ],
+        "now_random_seed": 0,
+        "epochs" : 800,
+        "batch_size" : 128,
+        "early_stop_epoch" : 50,
+        "repeat" : 3,
+        "save_model": true, 
+        "create" : true,
+        "mark": null
+    }
+}
