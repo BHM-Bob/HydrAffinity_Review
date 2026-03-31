@@ -1,3 +1,9 @@
+<!--
+ * @Date: 2026-03-23 22:39:40
+ * @LastEditors: BHM-Bob 2262029386@qq.com
+ * @LastEditTime: 2026-03-31 09:42:09
+ * @Description: 
+-->
 This repository contains the code and essential files to reproduce all experiments described in the work **A Multimodal Mixture-of-Experts Framework for Protein–Ligand Affinity Prediction**.
 To reproduce this project, please download the PDBBind dataset and various molecular pre-trained models, and use the code in this repository to generate all types of molecular embeddings.
 
@@ -30,7 +36,9 @@ To reproduce this project, please download the PDBBind dataset and various molec
 
 
 ## Data Availability:
-All protein–ligand complex structures and corresponding binding affinity data used in this study were sourced from the publicly available PDBbind database (http://www.pdbbind.org.cn). The dataset is freely accessible to the research community without restrictions.
+All protein–ligand complex structures and corresponding binding affinity data used in this study were sourced from the publicly available PDBbind database (http://www.pdbbind.org.cn).
+The dataset is freely accessible to the research community without restrictions.
+You can also download the assembled dataset from https://zenodo.org/records/19336925.
 
 The molecular pretraining models employed in this work are publicly available. Specifically, the model weights can be accessed at the following repositories: 
 - ChemBERTa (https://huggingface.co/DeepChem/models); 
@@ -50,3 +58,9 @@ Protein language models include:
 - ESM-3 (https://huggingface.co/EvolutionaryScale/esm3-sm-open-v1);
 - SaProt (https://huggingface.co/westlake-repl/SaProt_650M_AF2);
 - ProSST-2048 (https://huggingface.co/AI4Protein/ProSST-2048).
+
+Due to the size limit, we only provide the code for embedding generation.
+
+
+## Evaluation:
+We put our SOTA model weights on Zenodo: https://zenodo.org/records/19336925.
