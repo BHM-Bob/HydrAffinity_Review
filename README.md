@@ -4,7 +4,7 @@
  * @LastEditTime: 2026-03-31 09:42:09
  * @Description: 
 -->
-This repository contains the code and essential files to reproduce all experiments described in the work **A Multimodal Mixture-of-Experts Framework for Protein–Ligand Affinity Prediction**.
+This repository contains the code and essential files to reproduce all experiments described in the work **A Prepare-Free Mixture-of-Experts Framework for Protein–Ligand Affinity Prediction**.
 To reproduce this project, please download the PDBBind dataset and various molecular pre-trained models, and use the code in this repository to generate all types of molecular embeddings.
 
 
