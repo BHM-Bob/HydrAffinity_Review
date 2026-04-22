@@ -31,7 +31,7 @@ To reproduce this project, please download the PDBBind dataset and various molec
    3. m1: deprecated model architecture. Now only used for data generation.
    4. m3: Multimodal version of HydrAffinity.
    5. s1: Dual-modal version of HydrAffinity.
-5. environment_review.yml: conda environment file. Note that `fair-esm` has naming conflict with ESM3, please install `fair-esm==2.0.0` in a separate environment.
+5. environment_review.yml: conda environment file. Note that `fair-esm` has naming conflict with ESM3, please install `fair-esm==2.0.0` in a separate environment to replace ESM3.
     The original environment file is too big (950 lines), so we pick the essential packages in this file manually.
 
 
@@ -64,3 +64,6 @@ Due to the size limit, we only provide the code for embedding generation.
 
 ## Evaluation:
 We put our SOTA model weights on Zenodo: https://zenodo.org/records/19336925.
+
+- DUDE-Z dataset: https://dudez.docking.org/
+- LIT-PCBA dataset: https://drugdesign.unistra.fr/LIT-PCBA/
