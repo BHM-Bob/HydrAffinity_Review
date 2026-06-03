@@ -1,25 +1,145 @@
 import argparse
 import os
+import warnings
 from glob import glob
-
-from tqdm import tqdm
+from typing import Optional, Tuple
 
 os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
 import numpy as np
-import warnings
+import pandas as pd
 import pandas as pd
 import torch
 import torch.nn as nn
 from mbapy.dl_torch.utils import set_random_seed
+from scipy.stats import pearsonr
+from sklearn.metrics import mean_squared_error
+from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from config.config_dict import *
 from log.train_logger_v1 import *
 from models._utils.arg import *
 from models.s1.train import Arch1, get_dataset, get_model, val
-from utils import load_model_dict
 
 warnings.filterwarnings('ignore')
+
+def concordance_index(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """
+    Concordance Index (C‑index) for continuous outcomes without censoring.
+
+    This implementation follows the definition:
+      - Consider all comparable pairs (i, j) with y_true[i] != y_true[j].
+      - A pair is concordant if y_pred[i] > y_pred[j] when y_true[i] > y_true[j],
+        or y_pred[i] < y_pred[j] when y_true[i] < y_true[j].
+      - CI = (#concordant) / (#comparable pairs).
+
+    Parameters
+    ----------
+    y_true : np.ndarray
+        Ground‑truth values (e.g., binding affinities). Larger = stronger.
+    y_pred : np.ndarray
+        Model predictions/scores. Larger should mean stronger.
+
+    Returns
+    -------
+    float
+        CI in [0,1]. Returns -1 if CI cannot be computed (e.g., <2 samples or no
+        comparable pairs). Returns 0.0 if all predictions are tied.
+    """
+    y_true = np.asarray(y_true, dtype=np.float64)
+    y_pred = np.asarray(y_pred, dtype=np.float64)
+
+    n = y_true.shape[0]
+    if n < 2:
+        return -1.0
+
+    # Pairwise differences; upper‑triangle (i < j) is sufficient.
+    true_diff = y_true[:, None] - y_true[None, :]
+    pred_diff = y_pred[:, None] - y_pred[None, :]
+    triu_idx = np.triu_indices(n, k=1)
+
+    true_diff_triu = true_diff[triu_idx]
+    pred_diff_triu = pred_diff[triu_idx]
+
+    # Keep only pairs where the true values differ (i.e., comparable).
+    comparable = true_diff_triu != 0
+    if comparable.sum() == 0:
+        return -1.0
+
+    true_diff_c = true_diff_triu[comparable]
+    pred_diff_c = pred_diff_triu[comparable]
+
+    # Concordant if signs of the two differences match.
+    concordant = (np.sign(true_diff_c) == np.sign(pred_diff_c)).sum()
+    total = comparable.sum()
+
+    return float(concordant / total)
+
+
+def val(
+    model,
+    dataloader: Optional[torch.utils.data.DataLoader],
+    device: str,
+    config: dict,
+) -> Tuple[float, float, float, float, float]:
+    """
+    Evaluate a model on a validation set, returning loss, RMSE, MAE, Pearson's r and CI.
+
+    Returns
+    -------
+    tuple[float, float, float, float]
+        (loss, rmse, mae, pr, ci). Returns (-1, -1, -1, -1, -1) if dataloader is None.
+        Returns (100, 100, 100, 100, 100) if any NaN/Inf is detected.
+    """
+    if dataloader is None:
+        return -1, -1, -1, -1, -1
+
+    model.eval()
+
+    is_BiLevel = False
+    pred_cfg = config.get("model", {}).get("pred", "")
+    if isinstance(pred_cfg, str):
+        is_BiLevel = "BiLevel" in pred_cfg
+    elif isinstance(pred_cfg, (list, tuple)):
+        is_BiLevel = any("BiLevel" in n for n in pred_cfg)
+
+    pred_list = []
+    label_list = []
+
+    for data in tqdm(dataloader, desc="Validating", leave=False):
+        data = [i.to(device) for i in data]
+        inputs, label = data[1:-1], data[-1]
+
+        with torch.no_grad():
+            pred = model(*inputs)
+            if is_BiLevel:
+                pred = pred.reshape(label.shape[0], -1)
+                pred = pred[:, :-1].argmax(dim=-1) + pred[:, -1]
+            pred_list.append(pred.detach().cpu().view(-1).numpy())
+            label_list.append(label.detach().cpu().view(-1).numpy())
+
+    pred = np.concatenate(pred_list, axis=0)
+    label = np.concatenate(label_list, axis=0)
+
+    # Check for NaN/Inf values and return a sentinel error tuple if detected.
+    if np.isnan(pred).any() or np.isnan(label).any() or np.isinf(pred).any() or np.isinf(label).any():
+        return 100, 100, 100, 100, 100
+
+    # Pearson correlation (first element is r, second is p‑value; we only need r).
+    pr: float = pearsonr(pred, label)[0]
+
+    # MSE -> RMSE
+    loss: float = mean_squared_error(label, pred)
+    rmse: float = np.sqrt(loss)
+    mae: float = np.mean(np.abs(label - pred))
+
+    # Concordance Index (larger value means stronger binding).
+    ci: float = concordance_index(label, pred)
+
+    return loss, rmse, mae,  pr, ci
+
 
 
 def _setup(config, seed: int, valid_loader: torch.utils.data.DataLoader, best_model_list: list):
@@ -71,12 +191,12 @@ def run_one_config(cfg: str, this_run_dir: str):
         # start test
         model, device = _setup(config, seed, valid_loader, best_model_list)
         with torch.no_grad():
-            _, valid_rmse, valid_pr = val(model, valid_loader, device, config)
-            _, test2013_rmse, test2013_pr = val(model, test2013_loader, device, config)
-            _, test2016_rmse, test2016_pr = val(model, test2016_loader, device, config)
-            _, test2019_rmse, test2019_pr = val(model, test2019_loader, device, config)
-        msg = "valid_rmse:%.4f, valid_pr:%.4f, test2013_rmse:%.4f, test2013_pr:%.4f, test2016_rmse:%.4f, test2016_pr:%.4f, test2019_rmse:%.4f, test2019_pr:%.4f," \
-                    % (valid_rmse, valid_pr, test2013_rmse, test2013_pr, test2016_rmse, test2016_pr, test2019_rmse, test2019_pr)
+            _, valid_rmse, valid_mae, valid_pr, valid_ci = val(model, valid_loader, device, config)
+            _, test2013_rmse, test2013_mae, test2013_pr, test2013_ci = val(model, test2013_loader, device, config)
+            _, test2016_rmse, test2016_mae, test2016_pr, test2016_ci = val(model, test2016_loader, device, config)
+            _, test2019_rmse, test2019_mae, test2019_pr, test2019_ci = val(model, test2019_loader, device, config)
+        msg = "valid_rmse:%.4f, valid_mae:%.4f, valid_pr:%.4f, valid_ci:%.4f, test2013_rmse:%.4f, test2013_mae:%.4f, test2013_pr:%.4f, test2013_ci:%.4f, test2016_rmse:%.4f, test2016_mae:%.4f, test2016_pr:%.4f, test2016_ci:%.4f, test2019_rmse:%.4f, test2019_mae:%.4f, test2019_pr:%.4f, test2019_ci:%.4f," \
+                    % (valid_rmse, valid_mae, valid_pr, valid_ci, test2013_rmse, test2013_mae, test2013_pr, test2013_ci, test2016_rmse, test2016_mae, test2016_pr, test2016_ci, test2019_rmse, test2019_mae, test2019_pr, test2019_ci)
         print(msg)
         # append the msg at the last line in the log file
         with open(os.path.join(this_run_dir, f"randomseed{seed}", "log", "train", "Train.log"), "a") as f:
