@@ -21,6 +21,8 @@ class TransformerEncoderLayer(nn.Module):
         self.gated_sdpa = gated_sdpa
         self.use_flash_attn = use_flash_attn
         self.moe_ffn = True
+        # hard coded MoE balance loss scale, results show that 0 is the best for some tasks
+        # if need to use MoE loss, need to enable balance_loss property method
         self.moe_loss_scale = 0#1#e-7
         
         # 激活函数
