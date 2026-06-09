@@ -63,7 +63,7 @@ Due to the size limit, we only provide the code for embedding generation.
 
 
 ## Evaluation:
-We put our SOTA model weights on Zenodo: https://zenodo.org/records/19336925.
+We put our SOTA model weights and pre-processed dataset on Zenodo: https://zenodo.org/records/20595631.
 
 - DUDE-Z dataset: https://dudez.docking.org/
 - LIT-PCBA dataset: https://drugdesign.unistra.fr/LIT-PCBA/
