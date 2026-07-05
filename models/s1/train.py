@@ -2,6 +2,7 @@
 import argparse
 import os
 import sys
+from typing import Optional
 
 from tqdm import tqdm
 
@@ -37,7 +38,7 @@ from models._utils.scheduler import *
 from models.s1.data_loader import DANNDataset, get_data_loader
 from models.s1.model import (Arch1, Arch2, Arch3, Arch4, Arch11, Arch21,
                              Arch22, Arch23, Arch24, Arch31, Arch41, Arch42,
-                             Arch43, Arch44, DANNWarpper)
+                             Arch43, Arch44)
 from utils import (get_model_state_dict_copy, load_model_dict,
                    save_state_dict_in_thread)
 
@@ -241,7 +242,9 @@ def get_loss(model: Arch1, logits, label, criterion, criterion_moe, config, is_c
         loss = loss + moe_banlance_loss
     return loss
 
-def run_one_config(cfg: str|dict[str, bool|str|dict[str, float]], this_run_wd: Path = None, train_split: dict[str, list[str]] = None):
+def run_one_config(cfg: str|dict[str, bool|str|dict[str, float]], this_run_wd: Optional[Path] = None,
+                   train_split: dict[str, list[str]] = None, _get_dataset = get_dataset,
+                   extra_loss: Optional[list[tuple[callable, float]]] = None):
     if isinstance(cfg, str):
         config = Config(cfg).get_config()
     else:
@@ -278,7 +281,7 @@ def run_one_config(cfg: str|dict[str, bool|str|dict[str, float]], this_run_wd: P
         _log_fn(__file__)
         _log_fn(str(config))
         # get dataloader
-        train_loader, valid_loader, test2013_loader, test2016_loader, test2019_loader = get_dataset(config['data'], logger,
+        train_loader, valid_loader, test2013_loader, test2016_loader, test2019_loader = _get_dataset(config['data'], logger,
                                                                                                     debug=config['debug'], train_split=train_split)
         if config['data']['lig_type'] in {'token', 'PepDoRA-token'}:
             lig_dim = 1
@@ -367,9 +370,11 @@ def run_one_config(cfg: str|dict[str, bool|str|dict[str, float]], this_run_wd: P
                 else:
                     logits = model(mid, lig_feat, mask, prot_feat, noise_rate=config['model']['noise_rate'])
                     loss = get_loss(model, logits.reshape(-1), label.reshape(-1), criterion, criterion_moe, config)
-                
-                # attn1_weights.append(model.attn.transformer.layers[0].code_hack_atten_weights.mean(dim=0).cpu())
-                # attn2_weights.append(model.attn.transformer.layers[1].code_hack_atten_weights.mean(dim=0).cpu())
+                    if extra_loss is not None:
+                        for loss_fn, weight in extra_loss:
+                            extra_loss_v = loss_fn(logits.reshape(-1), label.reshape(-1)) * weight
+                            meters.update(loss_fn.__name__, extra_loss_v.item(), label.size(0))
+                            loss += extra_loss_v
                 
                 loss.backward()
                 optimizer.step()
@@ -391,14 +396,6 @@ def run_one_config(cfg: str|dict[str, bool|str|dict[str, float]], this_run_wd: P
                     print(f'MoE expert_activation: {model.predictor.expert_activation.cpu().numpy().astype(int).tolist()}')
                     print(f'MoE gate_density: {[f"{i.cpu().item():.4f}" for i in model.predictor.gate_density]}')
             else:
-                # attn1_weights = torch.stack(attn1_weights, dim=0).mean(dim=0)
-                # attn2_weights = torch.stack(attn2_weights, dim=0).mean(dim=0)
-                # sns.heatmap(attn1_weights)
-                # save_show(os.path.join(logger.get_model_dir(), f'attn1_heatmap_epoch_{epoch}.png'), dpi=300, show=False)
-                # plt.close()
-                # sns.heatmap(attn2_weights)
-                # save_show(os.path.join(logger.get_model_dir(), f'attn2_heatmap_epoch_{epoch}.png'), dpi=300, show=False)
-                # plt.close()
                 # log loss
                 writer.add_scalar('train_rmse', epoch_rmse, epoch)
                 writer.add_scalar('MoE_act', meters.get('MoE_act').avg, epoch)
@@ -475,8 +472,8 @@ def run_one_config(cfg: str|dict[str, bool|str|dict[str, float]], this_run_wd: P
     taskpool.close(30)
 
 
-def make_args():
-    args_paser = argparse.ArgumentParser()
+def make_args(args_paser: Optional[argparse.ArgumentParser] = None):
+    args_paser = args_paser or argparse.ArgumentParser()
     args_paser.add_argument("-c", "--config", type=str, default=None,
                             help="config file name in task/configs dir, default is %(default)s")
     args_paser.add_argument("-a", type=str, choices=['arch1', 'arch11', 'arch2', 'arch21', 'arch22', 'arch23', 'arch24',
