@@ -410,11 +410,55 @@ class DANNDataset:
         return len(self.data)
 
 
+class GraphDatasetCompress(GraphDataset):
+    def __init__(self, df: pd.DataFrame = None, lig_data: dict[str, torch.tensor] = None,
+                 rec_data: dict[str, torch.tensor] = None, logger: logging.Logger = None):
+        self.prot_transform = None
+        self.lig_seq_reduce = None
+        self.umol_v4_pool = None
+        if df is not None:
+            self.df = df
+            self.data = []
+            if 'SMILES' in df.columns:
+                cols = ['SMILES', 'pKi', 'Sequence']
+                is_eMOSAIC = True
+            else:
+                cols = ['target_smiles', 'affinity', 'target_sequence']
+                is_eMOSAIC = False
+            for idx, (smiles, pKa, seq) in tqdm(enumerate(df[cols].values), total=len(df), desc='Appending data'):
+                seq = seq[:2048]
+                if smiles not in lig_data or seq not in rec_data:
+                    print(f'Warning: {smiles} or {seq} not in lig_data or rec_data')
+                    continue
+                rec_feat = rec_data[seq]
+                lig_feat, lig_mask = lig_data[smiles]
+                # NOTE: due to models use LeakyReLU, and the pKa in eMOSAIC dataset is mostly negative
+                # so use -pKa to make it positive mostly to be more stable for training
+                pKa = torch.FloatTensor([-pKa if is_eMOSAIC else pKa])
+                self.data.append([idx, -1, lig_feat, lig_mask, rec_feat, pKa])
+    
+    def __del__(self):
+        try:
+            for i in self.data:
+                del i[0], i[0], i[0], i[0], i[0], i[0]
+        except:
+            pass
+
+
 def get_data_loader(lig_data: dict[str, torch.tensor], rec_data: dict[str, torch.tensor],
                     df: pd.DataFrame, prot_transform: list[str], lig_seq_reduce: str, load_ratio: float,
                     load_order: str, cat_v4_n: int, device: str, batch_size: int,
                     shuffle: bool, num_workers: int=0, logger: logging.Logger = None, drop_last: bool=False):
     dataset = GraphDataset(lig_data, rec_data, df, prot_transform, lig_seq_reduce, load_ratio, load_order, cat_v4_n, device, logger)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, drop_last=drop_last,
+                            pin_memory=True)
+    return dataloader
+
+
+def get_data_loader_compress(lig_data: dict[str, torch.tensor], rec_data: dict[str, torch.tensor],
+                    df: pd.DataFrame, batch_size: int,
+                    shuffle: bool, num_workers: int=0, logger: logging.Logger = None, drop_last: bool=False):
+    dataset = GraphDatasetCompress(df, lig_data, rec_data, logger)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, drop_last=drop_last,
                             pin_memory=True)
     return dataloader
