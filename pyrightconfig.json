@@ -1,0 +1,24 @@
+{
+    "exclude": ["checkpoints", "config", "data", "ablation_study"],
+
+
+    "typeCheckingMode": "basic",
+
+    "reportMissingImports": "error",
+    "reportUnusedVariable": "error",
+
+    "reportAttributeAccessIssue": "information",
+    "reportOperatorIssue": "information",
+
+    "reportArgumentType": "none",
+    "reportUnknownVariableType": "none",
+    "reportInvalidTypeArguments": "none",
+    "reportAssignmentType": "none",
+    "reportCallIssue": "none",
+    "reportIndexIssue": "none",
+    "reportOptionalMemberAccess": "none",
+    "reportOptionalSubscript": "none",
+    "reportOptionalCall": "none",
+    "reportGeneralTypeIssues": "none",
+    "reportPrivateImportUsage": "none"
+}
