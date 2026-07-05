@@ -1,2 +1,5 @@
 # python cache
 __pycache__/
+
+# DeepDTAGen
+data/DeepDTAGen/*.csv
