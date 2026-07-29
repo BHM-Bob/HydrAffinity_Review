@@ -67,3 +67,18 @@ We put our SOTA model weights and pre-processed dataset on Zenodo: https://zenod
 
 - DUDE-Z dataset: https://dudez.docking.org/
 - LIT-PCBA dataset: https://drugdesign.unistra.fr/LIT-PCBA/
+
+# citation
+```text
+@article {Bao2026.07.24.740495,
+	author = {Bao, Huiming and Dong, Shouliang},
+	title = {A Preparation-Free Mixture-of-Experts Framework for Protein-Ligand Affinity Prediction},
+	elocation-id = {2026.07.24.740495},
+	year = {2026},
+	doi = {10.64898/2026.07.24.740495},
+	publisher = {Cold Spring Harbor Laboratory},
+	URL = {https://www.biorxiv.org/content/early/2026/07/28/2026.07.24.740495},
+	eprint = {https://www.biorxiv.org/content/early/2026/07/28/2026.07.24.740495.full.pdf},
+	journal = {bioRxiv}
+}
+```
