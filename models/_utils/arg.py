@@ -120,16 +120,12 @@ def add_noise_args(args_paser: argparse.ArgumentParser, default_do: float = 0.1,
         -do: dropout rate, default is 0.1
         -ns: noise rate, default is 0.05
         -lns: label noise rate, default is 0.05
-        -mask: mask rate, default is 0
-        -fusion: fusion rate, default is 0
-        -replace: replace rate, default is 0
-        --token-replace: token replace rate, default is 0
     """
-    args_paser.add_argument("-do", type=float, default=0.1,
+    args_paser.add_argument("-do", type=float, default=default_do,
                             help="dropout rate, default is %(default)s")
-    args_paser.add_argument("-ns", type=float, default=0.05,
+    args_paser.add_argument("-ns", type=float, default=default_ns,
                             help="noise rate, default is %(default)s")
-    args_paser.add_argument("-lns", type=float, default=0.05,
+    args_paser.add_argument("-lns", type=float, default=default_lns,
                             help="label noise rate, default is %(default)s")
     return args_paser
 
