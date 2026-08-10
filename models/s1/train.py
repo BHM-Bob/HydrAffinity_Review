@@ -323,7 +323,7 @@ def run_one_config(cfg: str|dict[str, bool|str|dict[str, float]], this_run_wd: O
         meters = Meters()
         meters.add_meters(MeterType('train', ':.4f'), MeterType('valid', ':.4f'),
                           MeterType('test2013', ':.4f'), MeterType('test2016', ':.4f'),
-                          MeterType('best_2016', ':.4f', 'min'),
+                          MeterType('best', ':.4f', 'min'),
                           MeterType('MoE_act', ':.4f'), MeterType('MoE_loss', ':.4f'))
         meters.make_progress(1, mp = logger.info if not config['debug'] else print)
         best_model_list = []
@@ -411,20 +411,20 @@ def run_one_config(cfg: str|dict[str, bool|str|dict[str, float]], this_run_wd: O
                 meters.update('test2013', test2013_rmse, 1)
                 meters.update('test2016', test2016_rmse, 1)
                 # save best model
-                if test2016_rmse < meters.get('best_2016').get_best():
-                    meters.update('best_2016', test2016_rmse, 1)
+                if meters.get(config['training']['best_metric']).avg < meters.get('best').get_best():
+                    meters.update('best', meters.get(config['training']['best_metric']).avg, 1)
                     msg = "epoch:%4d, train_rmse:%7.4f, valid_rmse:%7.4f, test2013_rmse:%7.4f, test2016_rmse:%7.4f" \
                         % (epoch, epoch_rmse, valid_rmse, test2013_rmse, test2016_rmse)
                     model_path = os.path.join(logger.get_model_dir(), msg + '.pt')
                     best_model_list.append(model_path)
                     model_ckp = get_model_state_dict_copy(model)
                     taskpool.add_task(None, save_state_dict_in_thread, model_ckp, logger.get_model_dir(), msg)
-                    print(f'Now is No.{meters.get("best_2016").sum_best} best model')
+                    print(f'Now is No.{meters.get("best").sum_best} best model')
                 else:
-                    no_improve_count = meters.get("best_2016").counter() # easy understand
+                    no_improve_count = meters.get("best").counter() # easy understand
                     # make sure train more than leat epochs
                     if no_improve_count > config['training']['early_stop_epoch'] and epoch > config['training']['least_epochs']:
-                        best_mse = meters.get("best_2016").get_best()
+                        best_mse = meters.get("best").get_best()
                         msg = "best_rmse: %.4f" % best_mse
                         logger.info(f"early stop in epoch {epoch}")
                         logger.info(msg)
@@ -436,7 +436,7 @@ def run_one_config(cfg: str|dict[str, bool|str|dict[str, float]], this_run_wd: O
             scheduler_manager.step_after_epoch('model', epoch, valid_rmse)
                     
             meters_need_reset = list(meters.meters.keys())
-            meters_need_reset.remove('best_2016')
+            meters_need_reset.remove('best')
             meters.resets(*meters_need_reset)
             if model.pred_is_MoE:
                 model.predictor.reset_expert_activation()

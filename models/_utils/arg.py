@@ -176,6 +176,9 @@ def add_train_control_args(args_paser: argparse.ArgumentParser):
                             help="least epoch, default is %(default)s")
     args_paser.add_argument("--early-stop", type=int, default=100,
                             help="early_stop_epoch, default is %(default)s")
+    args_paser.add_argument("--best-metric", type=str, default='valid',
+                            choices=['train', 'valid', 'test2013', 'test2016', 'test2019'],
+                            help="best metric, default is %(default)s")
     args_paser.add_argument("--ckp-path", type=str, default=None,
                             help="checkpoint path, default is %(default)s")
     args_paser.add_argument("--act-all-ckp", action="store_true", default=False,
@@ -206,6 +209,7 @@ def assign_train_control_args(args: argparse.Namespace):
     args.config['training']['epochs'] = args.epoch
     args.config['training']['least_epochs'] = args.least_epoch
     args.config['training']['early_stop_epoch'] = args.early_stop
+    args.config['training']['best_metric'] = args.best_metric
     args.config['training']['ckp_path'] = args.ckp_path
     args.config['training']['activate_all_ckp'] = args.act_all_ckp
     args.config['training']['device'] = args.device    
