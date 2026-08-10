@@ -1,9 +1,6 @@
-
 import argparse
 import os
-import random
 import sys
-from glob import glob
 
 from tqdm import tqdm
 
@@ -20,9 +17,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from mbapy.base import get_fmt_time, put_log, split_list
-from mbapy.dl_torch.optim import LrScheduler, str2scheduleF
-from mbapy.dl_torch.utils import (AverageMeter, ProgressMeter,
-                                  init_model_parameter, set_random_seed)
+from mbapy.dl_torch.optim import str2scheduleF
+from mbapy.dl_torch.utils import set_random_seed
 from scipy.stats import pearsonr
 from sklearn.metrics import mean_squared_error
 from torch.utils.data import DataLoader
@@ -36,7 +32,7 @@ from models._utils.scheduler import *
 from models.m3.data_loader import (DANNDataset, get_data_loader,
                                    load_lig_data_by_name,
                                    load_rec_data_by_name)
-from models.m3.model import (Arch1, Arch14, get_data_shape_from_dataset)
+from models.m3.model import Arch1, Arch14, get_data_shape_from_dataset
 from models.s1.train import get_loss
 from utils import BestMeter, load_model_dict, save_model_dict
 
@@ -117,16 +113,6 @@ def get_dataset(config: dict, logger, val_mode: bool = False, debug: bool = Fals
         log_fn = logger.info if logger else put_log
         log_fn(f'protein feature normalized by mean and std of training set (mean={train_loader.dataset.mean}, std={train_loader.dataset.std}).')
     return train_loader, valid_loader, test2013_loader, test2016_loader, test2019_loader
-
-
-def merge_dataloader(*args: DataLoader) -> DataLoader:
-    data, umol_v4_pool = [], {}
-    for loader in args:
-        data += loader.dataset.data
-        umol_v4_pool.update(loader.dataset.umol_v4_pool)
-    data_loader = DataLoader(DANNDataset(data, umol_v4_pool, args[0].dataset.dyn_padding),
-                             batch_size=args[0].batch_size, shuffle=True, num_workers=1)
-    return data_loader
 
 
 def get_model(config: dict, data_shapes: dict[str, torch.Size], logger):
@@ -211,9 +197,7 @@ def run_one_config(cfg: str|dict[str, bool|str|dict[str, float]], this_run_wd: P
         # criterion
         criterion = nn.MSELoss()
         criterion_moe = nn.CrossEntropyLoss()
-        criterion_cl = nn.CrossEntropyLoss()
         # torch.autograd.set_detect_anomaly(True)
-        # torch.nn.utils.clip_grad_value_(model.parameters(), clip_value=0.5)
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         # meters
         meters = Meters()

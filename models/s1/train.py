@@ -1,4 +1,3 @@
-
 import argparse
 import os
 import sys
@@ -217,28 +216,19 @@ def get_model(config: dict, lig_dim: int, prot_dim: int, logger):
     return model
 
 
-def calcu_moe_banlance_loss(model: Arch1, criterion_moe, config):
+def calcu_moe_banlance_loss(model: Arch1, config):
     if model.is_MoE:
         moe_act_toggle, moe_act = config['model']['moe_act_toggle'], 1e10
         if moe_act_toggle is not None and model.pred_is_MoE:
             moe_act = model.predictor.expert_activation.std() / model.predictor.expert_activation.mean()
         if moe_act_toggle is None or moe_act > moe_act_toggle:
-            return model.calcu_moe_loss(criterion_moe).to(config['training']['device']) * config['model']['moe_loss_scale']
+            return model.calcu_moe_loss().to(config['training']['device']) * config['model']['moe_loss_scale']
     return 0
 
-def get_loss(model: Arch1, logits, label, criterion, criterion_moe, config, is_calcu_moe_banlance_loss: bool = True):
-    if (isinstance(config['model']['pred'], str) and 'BiLevel' in config['model']['pred']) or \
-       (isinstance(config['model']['pred'], list) and any('BiLevel' in n for n in config['model']['pred'])):
-        logits = logits.reshape(label.shape[0], -1)
-        loss_microm = criterion(logits[:, -1], label - label.floor())
-        loss_marco = criterion_moe(logits[:, :-1], label.floor().long())
-        with torch.no_grad():
-            scale = ((loss_marco.argmax(-1).view(-1)+loss_microm.view(-1))-label.view(-1)).abs().view(-1).mean().item()
-        loss = loss_microm + loss_marco * max(1, scale**2)
-    else:
-        loss = criterion(logits, label)
+def get_loss(model: Arch1, logits, label, criterion, config, is_calcu_moe_banlance_loss: bool = True):
+    loss = criterion(logits, label)
     if model.is_MoE and is_calcu_moe_banlance_loss:
-        moe_banlance_loss = calcu_moe_banlance_loss(model, criterion_moe, config)
+        moe_banlance_loss = calcu_moe_banlance_loss(model, config)
         loss = loss + moe_banlance_loss
     return loss
 
