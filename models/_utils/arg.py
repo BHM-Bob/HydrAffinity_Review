@@ -15,11 +15,11 @@ def add_pred_args(args_paser: argparse.ArgumentParser):
         --moe-loss-scale: MoE balance loss scale, default is 0.05
     """
     args_paser.add_argument("-pred", type=str, nargs='+', default=['MLP'],
-                            help="predictor, default is %(default)s")
+                            help="predictor, such as MLP, LinearDO or MLP 8 1, default is %(default)s")
     args_paser.add_argument("--lig-pred", type=str, nargs='+', default=['LinearDO'],
-                            help="predictor, default is %(default)s")
+                            help="ligand modal encoder, such as MLP, LinearDO or MLP 8 1, default is %(default)s")
     args_paser.add_argument("--prot-pred", type=str, nargs='+', default=['LinearDO'],
-                            help="predictor, default is %(default)s")
+                            help="protein modal encoder, such as MLP, LinearDO or MLP 8 1, default is %(default)s")
     args_paser.add_argument("--lig-pred-moe-n-head", type=int, default=1,
                             help="predictor MoE head number, default is %(default)s")
     args_paser.add_argument("--prot-pred-moe-n-head", type=int, default=1,
@@ -92,7 +92,7 @@ def add_transformer_args(args_paser: argparse.ArgumentParser):
     args_paser.add_argument("--gated-sdpa", type=int, default=0,
                             help="use gated sdpa. if 0, disabled; if -1, will start from seq-idx=0; if 1, will start from seq-idx=1, ...; default is %(default)s")  
     args_paser.add_argument("--low-mem-transformer", action="store_true", default=False,
-                            help="use low memory transformer, default is %(default)s")
+                            help="use FlashAttention, default is %(default)s")
     return args_paser
 
 
